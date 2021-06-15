@@ -151,6 +151,21 @@ pub enum Secret {
     /// use biscuit::jws::Secret;
     ///
     /// let secret = Secret::public_key_from_file("test/fixtures/rsa_public_key.der");
+    Ed25519KeyPair(Arc<signature::Ed25519KeyPair>),
+    /// An Ed25519 Key pair constructed from a PKCS8 DER encoded private key
+    ///
+    /// To generate a private key, use
+    ///
+    /// ```sh
+    /// openssl genpkey -algorithm ed25519 -outform DER -out test25519.der
+    /// ```
+    ///
+    /// # Examples
+    /// ```
+    /// use biscuit::jws::Secret;
+    ///
+    /// let secret = Secret::ecdsa_keypair_from_file(biscuit::jwa::SignatureAlgorithm::ES256, "test/fixtures/ecdsa_private_key.p8");
+    /// ```
     PublicKey(Vec<u8>),
     /// Use the modulus (`n`) and exponent (`e`) of an RSA key directly
     ///

@@ -89,6 +89,8 @@ pub enum SignatureAlgorithm {
     RS384,
     /// RSASSA-PKCS1-v1_5 using SHA-512
     RS512,
+    /// EdDSA using Ed25519, and SHA-512 as the digest algorithm
+    ED25519,
     /// ECDSA using P-256 and SHA-256
     ES256,
     /// ECDSA using P-384 and SHA-384
@@ -262,6 +264,7 @@ impl SignatureAlgorithm {
             HS256 | HS384 | HS512 => Self::sign_hmac(data, secret, self),
             RS256 | RS384 | RS512 | PS256 | PS384 | PS512 => Self::sign_rsa(data, secret, self),
             ES256 | ES384 | ES512 => Self::sign_ecdsa(data, secret, self),
+            ED25519 => Self::sign_ed25519(data, secret, self),
         }
     }
 
@@ -277,7 +280,7 @@ impl SignatureAlgorithm {
         match self {
             None => Self::verify_none(expected_signature, secret),
             HS256 | HS384 | HS512 => Self::verify_hmac(expected_signature, data, secret, self),
-            RS256 | RS384 | RS512 | PS256 | PS384 | PS512 | ES256 | ES384 | ES512 => {
+            RS256 | RS384 | RS512 | PS256 | PS384 | PS512 | ES256 | ES384 | ES512 | ED25519 => {
                 Self::verify_public_key(expected_signature, data, secret, self)
             }
         }
@@ -357,6 +360,15 @@ impl SignatureAlgorithm {
         }
     }
 
+    fn sign_ed25519(data: &[u8], secret: &Secret, _algorithm: &SignatureAlgorithm) -> Result<Vec<u8>, Error> {
+        let key_pair = match *secret {
+            Secret::Ed25519KeyPair(ref key_pair) => key_pair,
+            _ => Err("Invalid secret type. An Ed25519KeyPair is required".to_string())?,
+        };
+        let sig = key_pair.as_ref().sign(data);
+        Ok(sig.as_ref().to_vec())
+    }
+
     fn verify_none(expected_signature: &[u8], secret: &Secret) -> Result<(), Error> {
         match *secret {
             Secret::None => {}
@@ -399,6 +411,7 @@ impl SignatureAlgorithm {
                     SignatureAlgorithm::PS512 => &signature::RSA_PSS_2048_8192_SHA512,
                     SignatureAlgorithm::ES256 => &signature::ECDSA_P256_SHA256_FIXED,
                     SignatureAlgorithm::ES384 => &signature::ECDSA_P384_SHA384_FIXED,
+                    SignatureAlgorithm::ED25519 => &signature::ED25519,
                     SignatureAlgorithm::ES512 => Err(Error::UnsupportedOperation)?,
                     _ => unreachable!("Should not happen"),
                 };
